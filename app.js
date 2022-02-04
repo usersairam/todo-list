@@ -90,7 +90,7 @@ app.get("/todos/", async (request, response) => {
     data = await database.all(getTodosList);
     response.send(data);
   } else {
-    getTodosList = `SELECT * FROM todo WHERE search_q = '%${search_q}%';`;
+    getTodosList = `SELECT * FROM todo WHERE todo = '%${search_q}%';`;
     data = await database.all(getTodosList);
     response.send(data);
   }
