@@ -34,36 +34,31 @@ const isValidStatus = (requestQuery) => {
   return (
     requestQuery.status === "TO DO" ||
     requestQuery.status === "IN PROGRESS" ||
-    requestQuery.status === "DONE"
+    (requestQuery.status === "DONE" && requestQuery.status !== undefined)
   );
 };
 const isValidPriority = (requestQuery) => {
   return (
     requestQuery.priority === "HIGH" ||
     requestQuery.priority === "MEDIUM" ||
-    requestQuery.priority === "LOW"
+    (requestQuery.priority === "LOW" && requestQuery.priority !== undefined)
   );
 };
-const isValidStatusAndPriorityProperty = (requestQuery) => {
-  return (
-    requestQuery.status !== undefined && requestQuery.priority !== undefined
-  );
+const isdefinedPriority = (requestQuery) => {
+  return requestQuery.priority !== undefined;
 };
-const isValidStatusAndCategoryProperty = (requestQuery) => {
-  return (
-    requestQuery.status !== undefined && requestQuery.category !== undefined
-  );
+const isdefinedStatus = (requestQuery) => {
+  return requestQuery.status !== undefined;
 };
-const isValidCategoryAndPriorityProperty = (requestQuery) => {
-  return (
-    requestQuery.category !== undefined && requestQuery.priority !== undefined
-  );
+const isdefinedCategory = (requestQuery) => {
+  return requestQuery.category !== undefined;
 };
 const isValidCategory = (requestQuery) => {
   return (
     requestQuery.category === "WORK" ||
     requestQuery.category === "HOME" ||
-    requestQuery.category === "LEARNING"
+    (requestQuery.category === "LEARNING" &&
+      requestQuery.category !== undefined)
   );
 };
 const isValidDueDate = (requestQuery) => {
@@ -74,19 +69,7 @@ app.get("/todos/", async (request, response) => {
   const { status, priority, category, todo, search_q } = request.query;
   let getTodosList = "";
   let data = null;
-  if (isValidStatus(request.query)) {
-    getTodosList = `SELECT * FROM todo WHERE status = '${status}';`;
-    data = await database.all(getTodosList);
-    response.send(data);
-  } else if (isValidPriority(request.query)) {
-    getTodosList = `SELECT * FROM todo WHERE priority = '${priority}';`;
-    data = await database.all(getTodosList);
-    response.send(data);
-  } else if (isValidCategory(request.query)) {
-    getTodosList = `SELECT * FROM todo WHERE category = '${category}';`;
-    data = await database.all(getTodosList);
-    response.send(data);
-  } else if (isValidStatus(request.query) && isValidPriority(request.query)) {
+  if (isValidStatus(request.query) && isValidPriority(request.query)) {
     getTodosList = `SELECT * FROM todo WHERE priority = '${priority}'
          AND status = '${status}';`;
     data = await database.all(getTodosList);
@@ -101,20 +84,37 @@ app.get("/todos/", async (request, response) => {
          AND status = '${status}';`;
     data = await database.all(getTodosList);
     response.send(data);
-  } else {
-    switch (false) {
-      case isValidStatus(request.query):
-        response.status(400);
-        response.send("Invalid Todo Status");
-        break;
-      case isValidPriority(request.query):
-        response.status(400);
-        response.send("Invalid Todo Priority");
-        break;
-      case isValidCategory(request.query):
-        response.status(400);
-        response.send("Invalid Todo Category");
+  } else if (isdifinedStatus(request.query)) {
+    if (isValidStatus(request.query)) {
+      getTodosList = `SELECT * FROM todo WHERE status = '${status}';`;
+      data = await database.all(getTodosList);
+      response.send(data);
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Status");
     }
+  } else if (isdefinedPriority(request.query)) {
+    if (isValidPriority(request.query)) {
+      getTodosList = `SELECT * FROM todo WHERE priority = '${priority}';`;
+      data = await database.all(getTodosList);
+      response.send(data);
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Priority");
+    }
+  } else if (isdefinedCategory(request.query)) {
+    if (isValidCategory(request.query)) {
+      getTodosList = `SELECT * FROM todo WHERE category = '${category}';`;
+      data = await database.all(getTodosList);
+      response.send(data);
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Category");
+    }
+  } else {
+    getTodosList = `select * from todo where todo like '%${search_q}%';`;
+    data = await database.all(getTodosList);
+    response.send(data);
   }
 });
 module.exports = app;
