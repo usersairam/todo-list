@@ -3,7 +3,8 @@ const { open } = require("sqlite");
 const sqlite3 = require("sqlite3");
 const path = require("path");
 const validDate = require("date-fns/isValid");
-const { format } = require("date-fns");
+const format = require("date-fns/format");
+const parse = require("date-fns/parseISO");
 
 const databasePath = path.join(__dirname, "todoApplication.db");
 
@@ -61,9 +62,16 @@ const isValidCategory = (requestQuery) => {
       requestQuery.category !== undefined)
   );
 };
+const isdefinedDueDate = (requestQuery) => {
+  return requestQuery.dueDate !== undefined;
+};
 const isValidDueDate = (requestQuery) => {
-  let theDate = format(new Date(requestQuery.date), "yyyy-MM-dd");
-  return validDate(theDate);
+  let date = format(new Date(requestQuery.dueDate), "yyyy-MM-dd");
+  return validDate(parse(date));
+};
+const isValidDate = (requestQuery) => {
+  let date = format(new Date(requestQuery.date), "yyyy-MM-dd");
+  return validDate(parse(date));
 };
 app.get("/todos/", async (request, response) => {
   const { status, priority, category, todo, search_q } = request.query;
@@ -131,28 +139,84 @@ app.get("/todos/:todoId/", async (request, response) => {
   let theTodo = await database.get(todoIdQuery);
   response.send(theTodo);
 });
+app.get("/agenda/", async (request, response) => {
+  let { date } = request.query;
+  console.log(date);
+  let formattedDate = format(new Date(date), "yyyy-MM-dd");
+  if (isValidDate(request.query)) {
+    let getTodoQuery = `select id,todo,priority,status,category,
+        due_date as dueDate from todo
+        where due_date = ${formattedDate};`;
+    let datedTodo = await database.all(getTodoQuery);
+    response.send(datedTodo);
+  }
+});
 app.post("/todos/", async (request, response) => {
-  const {id,todo,priority,status,category,dueDate} = request.body
-  
+  const { id, todo, priority, status, category, dueDate } = request.body;
+  let queryStatus = null;
+  let queryPriority = null;
+  let queryTodo = null;
+  let queryCategory = null;
+  let queryDate = null;
+  if (isdefinedStatus(request.body)) {
+    if (isValidStatus(request.body)) {
+      queryStatus = status;
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Status");
+    }
+  } else if (isdefinedPriority(request.body)) {
+    if (isValidPriority(request.body)) {
+      queryPriority = priority;
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Priority");
+    }
+  } else if (isdefinedCategory(request.body)) {
+    if (isValidCategory(request.body)) {
+      queryCategory = category;
+    } else {
+      response.status(400);
+      response.send("Invalid Todo Category");
+    }
+  } else if (isdefinedDueDate(request.body)) {
+    if (isValidDueDate(request.body)) {
+      queryDate = dueDate;
+    } else {
+      response.status(400);
+      response.send("Invalid Due Date");
+    }
+  } else {
+    let updatedQueryTable = `update todo set
+  id = ${id},todo = '${todo}',priority = '${queryPriority}',
+  status = '${status}',category = '${category}',due_date = ${queryDate};`;
+    await database.run(updatedQueryTable);
+    response.send("Todo Successfully Added");
+  }
 });
 app.put("/todos/:todoId/", async (request, response) => {
   const { todoId } = request.params;
   const { status, priority, todo, category, dueDate } = request.body;
+  let queryStatus = null;
+  let queryPriority = null;
+  let queryTodo = null;
+  let queryCategory = null;
+  let QueryDate = null;
   if (isdefinedStatus(request.body)) {
     if (isValidStatus(request.body)) {
-      let updatedQuery = `update todo 
-      set status = ${status} where id = ${todoId};`;
-      await database.run(updatedQuery);
+      let updateQuery = `update todo set
+  status = '${status}' where id= ${todoId};`;
+      await database.run(updateQuery);
       response.send("Status Updated");
     } else {
       response.status(400);
-      response.send("Invalid Todd Status");
+      response.send("Invalid Todo Status");
     }
   } else if (isdefinedPriority(request.body)) {
     if (isValidPriority(request.body)) {
-      let updatedQuery = `update todo 
-      set priority = ${priority} where id = ${todoId};`;
-      await database.run(updatedQuery);
+      let updateQuery = `update todo set
+  priority = '${priority}' where id = ${todoId};`;
+      await database.run(updateQuery);
       response.send("Priority Updated");
     } else {
       response.status(400);
@@ -160,19 +224,24 @@ app.put("/todos/:todoId/", async (request, response) => {
     }
   } else if (isdefinedCategory(request.body)) {
     if (isValidCategory(request.body)) {
-      let updatedQuery = `update todo 
-      set category = ${category} where id = ${todoId};`;
-      await database.run(updatedQuery);
+      let updateQuery = `update todo set
+  category = '${category}' where id = ${todoId};`;
+      await database.run(updateQuery);
       response.send("Category Updated");
     } else {
       response.status(400);
       response.send("Invalid Todo Category");
     }
-  } else {
-    let updatedQuery = `update todo 
-      set due_date = ${dueDate} where id = ${todoId};`;
-    await database.run(updatedQuery);
-    response.send("Due Date Updated");
+  } else if (isdefinedDueDate(request.body)) {
+    if (isValidDueDate(request.body)) {
+      let updateQuery = `update todo set
+  due_date = '${dueDate}' where id = ${todoId};`;
+      await database.run(updateQuery);
+      response.send("Due Date Updated");
+    } else {
+      response.status(400);
+      response.send("Invalid Due Date");
+    }
   }
 });
 app.delete("/todos/:todoId/", async (request, response) => {
